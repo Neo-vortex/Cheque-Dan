@@ -1,4 +1,4 @@
-package com.example.cheque_app
+package ir.neovortex.cheque_dan
 
 import io.flutter.embedding.android.FlutterActivity
 
