@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:document_scanner_flutter/configs/configs.dart';
+import 'package:document_scanner_flutter/document_scanner_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,7 +9,6 @@ import '../../core/constants/app_colors.dart';
 // ═══════════════════════════════════════════════════════════════════════════
 // Doc scanner import — guarded so it doesn't break non-mobile builds
 // ═══════════════════════════════════════════════════════════════════════════
-import 'package:flutter_doc_scanner/flutter_doc_scanner.dart';
 
 class ChequeImagePicker extends StatelessWidget {
   final List<String> imagePaths;
@@ -48,16 +49,20 @@ class ChequeImagePicker extends StatelessWidget {
 
   Future<void> _scanDocument(BuildContext context) async {
     try {
-      // getScannedDocumentAsImages returns dynamic (List at runtime)
-      final dynamic result = await FlutterDocScanner()
-          .getScannedDocumentAsImages(page: 4);
-      if (result == null) return;
-      final List<String> scanned = (result as List)
-          .map((p) => p.toString())
+      final File? scannedFile = await DocumentScannerFlutter.launch(context,
+        source: ScannerFileSource.CAMERA,
+      );
+      if (scannedFile == null) return;
+
+      final path = scannedFile.path;
+
+      final paths = [...imagePaths, path]
+          .take(maxImages)
           .toList();
-      if (scanned.isEmpty) return;
-      final paths = [...imagePaths, ...scanned];
-      onChanged(paths.take(maxImages).toList());
+
+      onChanged(paths);
+    } on PlatformException {
+      _showError(context, 'خطا در اسکن سند');
     } catch (e) {
       _showError(context, 'خطا در اسکن سند');
     }
