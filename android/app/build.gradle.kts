@@ -6,7 +6,8 @@ plugins {
 }
 
 android {
-    namespace = "com.example.cheque_app"
+    ndkVersion = "27.0.12077973"
+    namespace = "ir.neovortex.cheque_dan"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
