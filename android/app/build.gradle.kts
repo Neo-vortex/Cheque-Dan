@@ -12,7 +12,7 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        coreLibraryDesugaringEnabled true
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -42,7 +42,7 @@ android {
 }
 dependencies {
     // For AGP 7.4+
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.3")
     // For AGP 7.3
     // coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.2.3'
     // For AGP 4.0 to 7.2
