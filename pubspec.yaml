@@ -44,7 +44,6 @@ dependencies:
 
   # Image & scanning
   image_picker: ^1.1.2
-  document_scanner_flutter: ^0.3.0
   flutter_doc_scanner: ^0.0.9
   mobile_scanner: ^5.2.3
   provider: ^6.1.2
