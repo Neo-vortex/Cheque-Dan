@@ -10,7 +10,6 @@ import '../../../../core/utils/date_utils.dart' as du;
 import '../../../../shared/widgets/status_badge.dart';
 import '../blocs/cheque_bloc.dart';
 import 'cheque_form_screen.dart';
-
 class ChequeDetailScreen extends StatelessWidget {
   final Cheque cheque;
 
@@ -63,24 +62,24 @@ class ChequeDetailScreen extends StatelessWidget {
             children: [
               _buildHeaderCard(context, current),
               const SizedBox(height: 12),
-              _buildDetailsCard(current),
+              _buildDetailsCard(current, context),
               const SizedBox(height: 12),
               if (current.isActive) _buildActionsCard(context, current),
               if (current.note != null) ...[
                 const SizedBox(height: 12),
-                _buildNoteCard(current),
+                _buildNoteCard(current,context),
               ],
               if (current.tags.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                _buildTagsCard(current),
+                _buildTagsCard(current,context),
               ],
               if (current.imagePaths.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                _buildImagesCard(current),
+                _buildImagesCard(current,context),
               ],
               if (current.statusHistory.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                _buildHistoryCard(current),
+                _buildHistoryCard(current,context),
               ],
             ],
           ),
@@ -144,7 +143,7 @@ class ChequeDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailsCard(Cheque c) {
+  Widget _buildDetailsCard(Cheque c, BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -156,7 +155,7 @@ class ChequeDetailScreen extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: Theme.of(context as BuildContext).brightness == Brightness.dark ? AppColors.darkTextSecondary : AppColors.textSecondary,
+                color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextSecondary : AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: 12),
@@ -222,7 +221,7 @@ class ChequeDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildNoteCard(Cheque c) {
+  Widget _buildNoteCard(Cheque c, BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -238,14 +237,14 @@ class ChequeDetailScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text(c.note!, style: TextStyle(fontSize: 14, color: Theme.of(context as BuildContext).brightness == Brightness.dark ? AppColors.darkTextPrimary : AppColors.textPrimary, height: 1.6)),
+            Text(c.note!, style: TextStyle(fontSize: 14, color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextPrimary : AppColors.textPrimary, height: 1.6)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTagsCard(Cheque c) {
+  Widget _buildTagsCard(Cheque c, BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -272,7 +271,7 @@ class ChequeDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHistoryCard(Cheque c) {
+  Widget _buildHistoryCard(Cheque c, BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -318,7 +317,7 @@ class ChequeDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildImagesCard(Cheque c) {
+  Widget _buildImagesCard(Cheque c, BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
