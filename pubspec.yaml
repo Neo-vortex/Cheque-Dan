@@ -1,7 +1,7 @@
 name: cheque_app
 description: مدیریت چک‌های صیادی - Persian Sayyadi Cheque Manager
 publish_to: 'none'
-version: 1.1.0+1
+version: 1.1.2+1
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
