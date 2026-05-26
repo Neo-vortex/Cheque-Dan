@@ -669,9 +669,12 @@ class _DayCell extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      // Bug 8 fix: ensure minimum 44×44 touch target (accessibility standard)
+      behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        margin: const EdgeInsets.all(2),
+        margin: const EdgeInsets.all(1),
+        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
         decoration: BoxDecoration(
           color: bg,
           shape: BoxShape.circle,

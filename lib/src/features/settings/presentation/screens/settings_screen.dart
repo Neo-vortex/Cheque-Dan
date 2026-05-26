@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/services/notification_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
@@ -49,10 +50,24 @@ class SettingsScreen extends StatelessWidget {
                         const Text('دریافت یادآوری برای سررسید چک‌ها'),
                     value: settings.notificationsEnabled,
                     activeColor: AppColors.primary,
-                    onChanged: (v) => _updateSettings(
-                      context,
-                      settings.copyWith(notificationsEnabled: v),
-                    ),
+                    onChanged: (v) async {
+                      if (v) {
+                        // Bug 3 fix: request notification permission when enabling
+                        final granted = await NotificationService.instance.requestPermission();
+                        if (!granted && context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('برای دریافت اعلان، دسترسی را در تنظیمات گوشی فعال کنید'),
+                              duration: Duration(seconds: 4),
+                            ),
+                          );
+                          return;
+                        }
+                      }
+                      if (context.mounted) {
+                        _updateSettings(context, settings.copyWith(notificationsEnabled: v));
+                      }
+                    },
                   ),
                   const Divider(height: 1),
                   ListTile(

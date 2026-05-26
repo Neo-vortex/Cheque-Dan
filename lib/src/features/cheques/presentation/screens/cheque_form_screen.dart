@@ -15,8 +15,12 @@ import '../../../../features/cheque_books/data/cheque_book_repository.dart';
 
 class ChequeFormScreen extends StatefulWidget {
   final Cheque? cheque;
+  /// When provided (from راس‌گیری), the form opens in CREATE mode but
+  /// pre-fills amount, dueDate, counterpartyName, and direction. All fields
+  /// remain fully editable.
+  final Cheque? prefillFromRasGiri;
 
-  const ChequeFormScreen({super.key, this.cheque});
+  const ChequeFormScreen({super.key, this.cheque, this.prefillFromRasGiri});
 
   @override
   State<ChequeFormScreen> createState() => _ChequeFormScreenState();
@@ -66,6 +70,14 @@ class _ChequeFormScreenState extends State<ChequeFormScreen> {
       _status = c.status;
       _tags = List.from(c.tags);
       _imagePaths = List.from(c.imagePaths);
+    }
+    // راس‌گیری prefill: applied only in create mode (no cheque being edited)
+    if (!_isEditing && widget.prefillFromRasGiri != null) {
+      final p = widget.prefillFromRasGiri!;
+      _amountCtrl.text = CurrencyFormatter.formatNumber(p.amount);
+      _counterpartyCtrl.text = p.counterpartyName;
+      _dueDate = p.dueDate;
+      _direction = p.direction;
     }
     _loadChequeBooks();
   }
@@ -331,7 +343,14 @@ class _ChequeFormScreenState extends State<ChequeFormScreen> {
                 },
                 keyboardType: TextInputType.number,
                 onChanged: (v) {
-                  final clean = v.replaceAll(',', '').replaceAll(' ', '');
+                  // Bug 10 fix: normalize all digits to ASCII first,
+                  // then reformat with Persian digits uniformly.
+                  const farsi = '۰۱۲۳۴۵۶۷۸۹';
+                  final normalized = v.split('').map((c) {
+                    final idx = farsi.indexOf(c);
+                    return idx >= 0 ? idx.toString() : c;
+                  }).join();
+                  final clean = normalized.replaceAll(',', '').replaceAll(' ', '');
                   final num = double.tryParse(clean);
                   if (num != null) {
                     final formatted = CurrencyFormatter.formatNumber(num);
@@ -466,10 +485,10 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w700,
-        color: AppColors.textSecondary,
+        color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextSecondary : AppColors.textSecondary,
       ),
     );
   }
@@ -532,10 +551,10 @@ class _ToggleOption extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
-          color: selected ? color.withOpacity(0.12) : AppColors.surfaceVariant,
+          color: selected ? color.withOpacity(0.12) : (Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? color : AppColors.border,
+            color: selected ? color : (Theme.of(context).brightness == Brightness.dark ? AppColors.darkBorder : AppColors.border),
             width: selected ? 2 : 1,
           ),
         ),
@@ -710,9 +729,9 @@ class _ChequeBookPickerField extends StatelessWidget {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkSurface : AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         padding: const EdgeInsets.all(20),
         child: Column(

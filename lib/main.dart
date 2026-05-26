@@ -58,16 +58,19 @@ class ChequeApp extends StatelessWidget {
         child: MultiBlocProvider(
           providers: [
             BlocProvider(
-              create: (ctx) => ChequeBloc(ctx.read<ChequeRepository>())
-                ..add(const LoadChequesEvent()),
+              // Bug 1 fix: ChequeBookBloc created first so ChequeBloc can reference it
+              create: (_) => ChequeBookBloc(ChequeBookRepository())
+                ..add(const LoadChequeBooksEvent()),
+            ),
+            BlocProvider(
+              create: (ctx) => ChequeBloc(
+                ctx.read<ChequeRepository>(),
+                chequeBookBloc: ctx.read<ChequeBookBloc>(),
+              )..add(const LoadChequesEvent()),
             ),
             BlocProvider(
               create: (ctx) => SettingsBloc(ctx.read<SettingsRepository>())
                 ..add(const LoadSettingsEvent()),
-            ),
-            BlocProvider(
-              create: (_) => ChequeBookBloc(ChequeBookRepository())
-                ..add(const LoadChequeBooksEvent()),
             ),
           ],
           child: BlocBuilder<SettingsBloc, SettingsState>(

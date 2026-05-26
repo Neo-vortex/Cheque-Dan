@@ -98,6 +98,7 @@ class _ChequeBookCard extends StatelessWidget {
     final remaining = enriched.remainingPages;
     final used = enriched.usedPages;
     final progress = book.totalPages > 0 ? used / book.totalPages : 0.0;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -125,18 +126,18 @@ class _ChequeBookCard extends StatelessWidget {
                       children: [
                         Text(
                           book.title,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
+                            color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           '${book.bankName} • شعبه ${book.branch}',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
-                            color: AppColors.textSecondary,
+                            color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary,
                           ),
                         ),
                       ],
@@ -200,8 +201,8 @@ class _ChequeBookCard extends StatelessWidget {
                   const Spacer(),
                   Text(
                     '${_toPersian(book.startNumber.toString())} – ${_toPersian(book.endNumber.toString())}',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textHint),
+                    style: TextStyle(
+                        fontSize: 12, color: isDark ? AppColors.darkTextHint : AppColors.textHint),
                   ),
                 ],
               ),

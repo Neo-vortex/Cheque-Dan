@@ -2,15 +2,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '../../../../core/models/cheque_model.dart';
 import '../../data/cheque_repository.dart';
+import '../../../cheque_books/presentation/blocs/cheque_book_bloc.dart';
 
 part 'cheque_event.dart';
 part 'cheque_state.dart';
 
 class ChequeBloc extends Bloc<ChequeEvent, ChequeState> {
   final ChequeRepository _repository;
+  // Optional reference to ChequeBookBloc to refresh counts when cheques change
+  final ChequeBookBloc? chequeBookBloc;
   List<Cheque> _allCheques = [];
 
-  ChequeBloc(this._repository) : super(const ChequeInitial()) {
+  ChequeBloc(this._repository, {this.chequeBookBloc}) : super(const ChequeInitial()) {
     on<LoadChequesEvent>(_onLoadCheques);
     on<CreateChequeEvent>(_onCreateCheque);
     on<UpdateChequeEvent>(_onUpdateCheque);
@@ -21,6 +24,10 @@ class ChequeBloc extends Bloc<ChequeEvent, ChequeState> {
     on<BulkUpdateStatusEvent>(_onBulkUpdateStatus);
     on<ArchiveChequeEvent>(_onArchive);
     on<UnarchiveChequeEvent>(_onUnarchive);
+  }
+
+  void _refreshChequeBooks() {
+    chequeBookBloc?.add(const LoadChequeBooksEvent());
   }
 
   Future<void> _onLoadCheques(
@@ -72,6 +79,9 @@ class ChequeBloc extends Bloc<ChequeEvent, ChequeState> {
         message: 'چک با موفقیت ثبت شد',
         cheques: _allCheques,
       ));
+
+      // Refresh cheque book pages count immediately
+      _refreshChequeBooks();
     } catch (e) {
       emit(ChequeOperationFailure(
           error: 'خطا در ثبت چک: $e', cheques: _allCheques));
@@ -102,6 +112,8 @@ class ChequeBloc extends Bloc<ChequeEvent, ChequeState> {
         message: 'چک با موفقیت ویرایش شد',
         cheques: _allCheques,
       ));
+
+      _refreshChequeBooks();
     } catch (e) {
       emit(ChequeOperationFailure(
           error: 'خطا در ویرایش چک: $e', cheques: _allCheques));
@@ -121,6 +133,7 @@ class ChequeBloc extends Bloc<ChequeEvent, ChequeState> {
           .toList();
 
       emit(ChequesLoaded(cheques: _allCheques));
+      _refreshChequeBooks();
     } catch (e) {
       emit(ChequeOperationFailure(
           error: 'خطا در تغییر وضعیت: $e', cheques: _allCheques));
@@ -138,6 +151,7 @@ class ChequeBloc extends Bloc<ChequeEvent, ChequeState> {
         message: 'چک حذف شد',
         cheques: _allCheques,
       ));
+      _refreshChequeBooks();
     } catch (e) {
       emit(ChequeOperationFailure(
           error: 'خطا در حذف چک: $e', cheques: _allCheques));
@@ -178,6 +192,7 @@ class ChequeBloc extends Bloc<ChequeEvent, ChequeState> {
       }
 
       emit(ChequesLoaded(cheques: _allCheques));
+      _refreshChequeBooks();
     } catch (e) {
       emit(ChequeOperationFailure(
           error: 'خطا در به‌روزرسانی دسته‌ای: $e',

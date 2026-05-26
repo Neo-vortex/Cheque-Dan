@@ -72,16 +72,20 @@ class _MainNavShellState extends State<MainNavShell> {
               ],
             )
           : null,
-      body: Column(
-        children: [
-          const TimeOriginBanner(),
-          Expanded(
-            child: IndexedStack(
-              index: _currentIndex,
-              children: screens,
+      body: SafeArea(
+        // Bug 9 fix: wrap in SafeArea so safe area constraints are
+        // always respected regardless of the TimeOriginBanner state.
+        child: Column(
+          children: [
+            const TimeOriginBanner(),
+            Expanded(
+              child: IndexedStack(
+                index: _currentIndex,
+                children: screens,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

@@ -10,6 +10,7 @@ import '../../../../shared/widgets/cheque_list_tile.dart';
 import '../blocs/cheque_bloc.dart';
 import 'cheque_detail_screen.dart';
 import 'cheque_form_screen.dart';
+import '../../../../features/ras_giri/presentation/screens/ras_giri_screen.dart';
 
 class ChequesListScreen extends StatefulWidget {
   const ChequesListScreen({super.key});
@@ -98,6 +99,19 @@ class _ChequesListScreenState extends State<ChequesListScreen>
         )
             : const Text(AppStrings.cheques),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.calculate_outlined),
+            tooltip: 'راس‌گیری',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => BlocProvider.value(
+                  value: context.read<ChequeBloc>(),
+                  child: const RasGiriScreen(),
+                ),
+              ),
+            ),
+          ),
           IconButton(
             icon: Icon(_isSearching ? Icons.close : Icons.search),
             onPressed: () {

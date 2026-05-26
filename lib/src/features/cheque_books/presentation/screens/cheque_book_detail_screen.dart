@@ -36,6 +36,7 @@ class _ChequeBookDetailScreenState extends State<ChequeBookDetailScreen> {
     final book = widget.enriched.book;
     final remaining = widget.enriched.remainingPages;
     final used = widget.enriched.usedPages;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final progress =
         book.totalPages > 0 ? used / book.totalPages : 0.0;
 
@@ -48,9 +49,9 @@ class _ChequeBookDetailScreenState extends State<ChequeBookDetailScreen> {
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? AppColors.darkSurface : Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -62,13 +63,14 @@ class _ChequeBookDetailScreenState extends State<ChequeBookDetailScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(book.bankName,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 16,
-                                  fontWeight: FontWeight.w700)),
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? AppColors.darkTextPrimary : AppColors.textPrimary)),
                           Text('شعبه ${book.branch}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 12,
-                                  color: AppColors.textSecondary)),
+                                  color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -98,7 +100,7 @@ class _ChequeBookDetailScreenState extends State<ChequeBookDetailScreen> {
                   child: LinearProgressIndicator(
                     value: progress.clamp(0.0, 1.0),
                     minHeight: 10,
-                    backgroundColor: AppColors.surfaceVariant,
+                    backgroundColor: isDark ? AppColors.darkSurfaceVariant : AppColors.surfaceVariant,
                     valueColor: AlwaysStoppedAnimation<Color>(
                       remaining == 0
                           ? AppColors.returned
@@ -111,8 +113,8 @@ class _ChequeBookDetailScreenState extends State<ChequeBookDetailScreen> {
                 const SizedBox(height: 6),
                 Text(
                   'شماره‌ها: ${_p(book.startNumber)} تا ${_p(book.endNumber)}',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textHint),
+                  style: TextStyle(
+                      fontSize: 12, color: isDark ? AppColors.darkTextHint : AppColors.textHint),
                 ),
               ],
             ),
@@ -129,8 +131,8 @@ class _ChequeBookDetailScreenState extends State<ChequeBookDetailScreen> {
                 if (_pages != null)
                   Text(
                     '${_p(_pages!.where((p) => p.isUsed).length)} از ${_p(_pages!.length)}',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(
+                        fontSize: 12, color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
                   ),
               ],
             ),
@@ -172,16 +174,17 @@ class _Stat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
         Text(value,
             style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: color ?? AppColors.textPrimary)),
+                color: color ?? (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary))),
         Text(label,
-            style: const TextStyle(
-                fontSize: 11, color: AppColors.textSecondary)),
+            style: TextStyle(
+                fontSize: 11, color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary)),
       ],
     );
   }
@@ -195,18 +198,19 @@ class _PageRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final used = page.isUsed;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: used
-            ? AppColors.primary.withOpacity(0.05)
-            : Colors.white,
+            ? AppColors.primary.withOpacity(0.08)
+            : (isDark ? AppColors.darkSurface : Colors.white),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: used
-              ? AppColors.primary.withOpacity(0.2)
-              : AppColors.border,
+              ? AppColors.primary.withOpacity(0.3)
+              : (isDark ? AppColors.darkBorder : AppColors.border),
         ),
       ),
       child: Row(
@@ -238,15 +242,15 @@ class _PageRow extends StatelessWidget {
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                     color: used
-                        ? AppColors.textPrimary
-                        : AppColors.textSecondary,
+                        ? (isDark ? AppColors.darkTextPrimary : AppColors.textPrimary)
+                        : (isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
                   ),
                 ),
                 if (used && page.counterpartyName != null)
                   Text(
                     page.counterpartyName!,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(
+                        fontSize: 12, color: isDark ? AppColors.darkTextSecondary : AppColors.textSecondary),
                   ),
               ],
             ),

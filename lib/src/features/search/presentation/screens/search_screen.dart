@@ -59,13 +59,13 @@ class _SearchScreenState extends State<SearchScreen> {
         title: TextField(
           controller: _searchCtrl,
           autofocus: true,
-          style: const TextStyle(color: Colors.white),
-          cursorColor: Colors.white,
-          decoration: const InputDecoration(
+          style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextPrimary : Colors.white),
+          cursorColor: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextPrimary : Colors.white,
+          decoration: InputDecoration(
             hintText: AppStrings.searchHint,
-            hintStyle: TextStyle(color: Colors.white70),
+            hintStyle: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextSecondary : Colors.white70),
             border: InputBorder.none,
-            prefixIcon: Icon(Icons.search, color: Colors.white70),
+            prefixIcon: Icon(Icons.search, color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextSecondary : Colors.white70),
           ),
           onChanged: (q) {
             setState(() => _query = q);

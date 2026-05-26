@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/timezone.dart' as tz;
 import '../models/cheque_model.dart';
@@ -85,6 +86,35 @@ class NotificationService {
         iOS: DarwinNotificationDetails(),
       ),
     );
+  }
+
+  /// Bug 3 fix: Request notification permission from the OS.
+  /// Returns true if permission is granted.
+  Future<bool> requestPermission() async {
+    if (!_initialized) await initialize();
+    // Android 13+ requires explicit permission
+    final androidPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      final granted = await androidPlugin.requestNotificationsPermission();
+      return granted ?? false;
+    }
+    // iOS: DarwinInitializationSettings already requests permission on init.
+    // Re-request to ensure we have it.
+    final iosPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin>();
+    if (iosPlugin != null) {
+      final granted = await iosPlugin.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+      return granted ?? false;
+    }
+    // On other platforms, assume granted
+    return true;
   }
 
   Future<void> cancelNotification(int id) async {

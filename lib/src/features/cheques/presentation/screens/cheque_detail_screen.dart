@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path/path.dart';
 import '../../../../core/models/cheque_model.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_strings.dart';
@@ -115,10 +116,10 @@ class ChequeDetailScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               c.counterpartyName,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
+                color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextPrimary : AppColors.textPrimary,
               ),
             ),
             if (c.counterpartyPhone != null && c.counterpartyPhone!.isNotEmpty) ...[
@@ -150,12 +151,12 @@ class ChequeDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'اطلاعات چک',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textSecondary,
+                color: Theme.of(context as BuildContext).brightness == Brightness.dark ? AppColors.darkTextSecondary : AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: 12),
@@ -180,9 +181,9 @@ class ChequeDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'تغییر وضعیت',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextSecondary : AppColors.textSecondary),
             ),
             const SizedBox(height: 12),
             Row(
@@ -237,7 +238,7 @@ class ChequeDetailScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text(c.note!, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.6)),
+            Text(c.note!, style: TextStyle(fontSize: 14, color: Theme.of(context as BuildContext).brightness == Brightness.dark ? AppColors.darkTextPrimary : AppColors.textPrimary, height: 1.6)),
           ],
         ),
       ),
@@ -442,13 +443,13 @@ class _HistoryItem extends StatelessWidget {
           const Icon(Icons.circle, size: 8, color: AppColors.primary),
           const SizedBox(width: 8),
           Text(_statusLabel(change.fromStatus),
-              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-          const Icon(Icons.arrow_forward, size: 12, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 12, color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextSecondary : AppColors.textSecondary)),
+          Icon(Icons.arrow_forward, size: 12, color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextSecondary : AppColors.textSecondary),
           Text(_statusLabel(change.toStatus),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextPrimary : AppColors.textPrimary)),
           const Spacer(),
           Text(du.DateUtils.toPersian(change.changedAt),
-              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              style: TextStyle(fontSize: 11, color: Theme.of(context).brightness == Brightness.dark ? AppColors.darkTextSecondary : AppColors.textSecondary)),
         ],
       ),
     );
