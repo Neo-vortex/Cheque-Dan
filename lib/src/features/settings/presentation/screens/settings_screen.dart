@@ -47,17 +47,19 @@ class SettingsScreen extends StatelessWidget {
                   SwitchListTile(
                     title: const Text('فعال کردن اعلان‌ها'),
                     subtitle:
-                        const Text('دریافت یادآوری برای سررسید چک‌ها'),
+                    const Text('دریافت یادآوری برای سررسید چک‌ها'),
+                    secondary: const Icon(Icons.notifications_outlined),
                     value: settings.notificationsEnabled,
                     activeColor: AppColors.primary,
                     onChanged: (v) async {
                       if (v) {
-                        // Bug 3 fix: request notification permission when enabling
-                        final granted = await NotificationService.instance.requestPermission();
+                        final granted =
+                        await NotificationService.instance.requestPermission();
                         if (!granted && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('برای دریافت اعلان، دسترسی را در تنظیمات گوشی فعال کنید'),
+                              content: Text(
+                                  'برای دریافت اعلان، دسترسی را در تنظیمات گوشی فعال کنید'),
                               duration: Duration(seconds: 4),
                             ),
                           );
@@ -65,19 +67,41 @@ class SettingsScreen extends StatelessWidget {
                         }
                       }
                       if (context.mounted) {
-                        _updateSettings(context, settings.copyWith(notificationsEnabled: v));
+                        _updateSettings(
+                            context, settings.copyWith(notificationsEnabled: v));
                       }
                     },
                   ),
                   const Divider(height: 1),
                   ListTile(
+                    leading: const Icon(Icons.calendar_today_outlined),
                     title: const Text('روزهای یادآوری قبل از سررسید'),
-                    subtitle: Text(
-                        '${settings.reminderLeadDays} روز قبل'),
+                    subtitle: Text('${settings.reminderLeadDays} روز قبل'),
                     trailing: const Icon(Icons.chevron_left),
                     enabled: settings.notificationsEnabled,
                     onTap: settings.notificationsEnabled
                         ? () => _pickReminderDays(context, settings)
+                        : null,
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.access_time_outlined),
+                    title: const Text('زمان ارسال اعلان'),
+                    subtitle: Text(_formatHour(settings.reminderHour)),
+                    trailing: const Icon(Icons.chevron_left),
+                    enabled: settings.notificationsEnabled,
+                    onTap: settings.notificationsEnabled
+                        ? () => _pickReminderTime(context, settings)
+                        : null,
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.send_outlined),
+                    title: const Text('تست اعلان'),
+                    subtitle: const Text('ارسال یک اعلان آزمایشی'),
+                    enabled: settings.notificationsEnabled,
+                    onTap: settings.notificationsEnabled
+                        ? () => _sendTestNotification(context)
                         : null,
                   ),
                 ],
@@ -91,12 +115,12 @@ class SettingsScreen extends StatelessWidget {
                     title: const Text('بررسی در هنگام باز شدن'),
                     subtitle: const Text(
                         'نمایش صفحه بررسی چک‌ها هنگام باز شدن برنامه'),
+                    secondary: const Icon(Icons.launch_outlined),
                     value: settings.showReconciliationOnLaunch,
                     activeColor: AppColors.primary,
                     onChanged: (v) => _updateSettings(
                       context,
-                      settings.copyWith(
-                          showReconciliationOnLaunch: v),
+                      settings.copyWith(showReconciliationOnLaunch: v),
                     ),
                   ),
                 ],
@@ -132,6 +156,39 @@ class SettingsScreen extends StatelessWidget {
     context.read<SettingsBloc>().add(UpdateSettingsEvent(settings));
   }
 
+  String _formatHour(int hour) {
+    final period = hour < 12 ? 'صبح' : 'بعدازظهر';
+    final h = hour == 0
+        ? 12
+        : hour <= 12
+        ? hour
+        : hour - 12;
+    return 'ساعت $h $period';
+  }
+
+  Future<void> _sendTestNotification(BuildContext context) async {
+    try {
+      await NotificationService.instance.sendTestNotification();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('اعلان آزمایشی ارسال شد'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('خطا در ارسال اعلان: $e'),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _pickReminderDays(
       BuildContext context, AppSettings settings) async {
     final options = [1, 3, 7, 14];
@@ -146,12 +203,11 @@ class SettingsScreen extends StatelessWidget {
           children: [
             const Text(
               'یادآوری قبل از سررسید',
-              style: TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w700),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
             ...options.map(
-              (days) => RadioListTile<int>(
+                  (days) => RadioListTile<int>(
                 title: Text('$days روز قبل'),
                 value: days,
                 groupValue: settings.reminderLeadDays,
@@ -172,6 +228,64 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _pickReminderTime(
+      BuildContext context, AppSettings settings) async {
+    // Preset hour options: common times
+    final options = [6, 7, 8, 9, 10, 12, 14, 16, 18, 20];
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'زمان ارسال اعلان',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'اعلان‌های یادآوری در این ساعت ارسال می‌شوند',
+              style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(ctx).colorScheme.onSurface.withOpacity(0.6)),
+            ),
+            const SizedBox(height: 12),
+            ...options.map(
+                  (hour) {
+                final period = hour < 12 ? 'صبح' : 'بعدازظهر';
+                final h = hour == 0
+                    ? 12
+                    : hour <= 12
+                    ? hour
+                    : hour - 12;
+                return RadioListTile<int>(
+                  title: Text('ساعت $h $period'),
+                  value: hour,
+                  groupValue: settings.reminderHour,
+                  activeColor: AppColors.primary,
+                  onChanged: (v) {
+                    if (v != null) {
+                      _updateSettings(
+                        context,
+                        settings.copyWith(reminderHour: v),
+                      );
+                      Navigator.pop(ctx);
+                    }
+                  },
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -185,10 +299,10 @@ class _SectionTitle extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w700,
-          color: AppColors.textSecondary,
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.55),
         ),
       ),
     );

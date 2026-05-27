@@ -29,31 +29,38 @@ class PersianDatePickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final fillColor = theme.inputDecorationTheme.fillColor ?? colorScheme.surfaceVariant;
+    final borderColor = theme.inputDecorationTheme.enabledBorder?.borderSide.color
+        ?? colorScheme.outline;
+
     return GestureDetector(
       onTap: () => _pickDate(context),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
+          color: fillColor,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: errorText != null ? AppColors.returned : AppColors.border,
+            color: errorText != null ? colorScheme.error : borderColor,
             width: errorText != null ? 1.5 : 1,
           ),
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_outlined,
-                color: AppColors.textSecondary, size: 20),
+            Icon(Icons.calendar_today_outlined,
+                color: colorScheme.onSurface.withOpacity(0.55), size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(label,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.textSecondary)),
+                      style: TextStyle(
+                          fontSize: 11,
+                          color: colorScheme.onSurface.withOpacity(0.55))),
                   const SizedBox(height: 2),
                   Text(
                     selectedDate != null
@@ -61,8 +68,8 @@ class PersianDatePickerField extends StatelessWidget {
                         : 'انتخاب کنید',
                     style: TextStyle(
                       color: selectedDate != null
-                          ? AppColors.textPrimary
-                          : AppColors.textHint,
+                          ? colorScheme.onSurface
+                          : colorScheme.onSurface.withOpacity(0.38),
                       fontSize: 14,
                       fontWeight: selectedDate != null
                           ? FontWeight.w600
@@ -77,8 +84,8 @@ class PersianDatePickerField extends StatelessWidget {
                   ? Icons.edit_calendar_outlined
                   : Icons.arrow_drop_down,
               color: selectedDate != null
-                  ? AppColors.primary
-                  : AppColors.textSecondary,
+                  ? colorScheme.primary
+                  : colorScheme.onSurface.withOpacity(0.55),
               size: 20,
             ),
           ],
@@ -89,7 +96,7 @@ class PersianDatePickerField extends StatelessWidget {
 
   Future<void> _pickDate(BuildContext context) async {
     final initial =
-        selectedDate != null ? Jalali.fromDateTime(selectedDate!) : Jalali.now();
+    selectedDate != null ? Jalali.fromDateTime(selectedDate!) : Jalali.now();
     final first = firstDate != null
         ? Jalali.fromDateTime(firstDate!)
         : Jalali(1379, 1, 1);
@@ -314,6 +321,7 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
 
   @override
   Widget build(BuildContext context) {
+    final surfaceColor = Theme.of(context).colorScheme.surface;
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Center(
@@ -323,7 +331,7 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
             width:  _kDialogWidth,
             height: _kHeaderHeight + _kBodyHeight + _kFooterHeight,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: surfaceColor,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
@@ -477,10 +485,10 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
                 '${_monthNames[_month - 1]}  ${_pYear(_year)}',
                 key: ValueKey('$_year-$_month'),
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
@@ -502,7 +510,7 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: h == 'ج' ? AppColors.returned : AppColors.textHint,
+                  color: h == 'ج' ? AppColors.returned : Theme.of(context).colorScheme.onSurface.withOpacity(0.45),
                 ),
               ),
             ),
@@ -574,13 +582,13 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
                     inRange: inRange,
                     isFriday: isFri,
                     onTap: inRange
-                      ? () {
-                          HapticFeedback.selectionClick();
-                          setState(() {
-                            _year = year; _month = month; _day = d;
-                          });
-                        }
-                      : null,
+                        ? () {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _year = year; _month = month; _day = d;
+                      });
+                    }
+                        : null,
                   ),
                 );
               }),
@@ -618,12 +626,12 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
+                color: isSelected ? AppColors.primary : Theme.of(context).colorScheme.surfaceVariant,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: isSelected
                       ? AppColors.primary
-                      : AppColors.border,
+                      : Theme.of(context).dividerColor,
                 ),
               ),
               child: Center(
@@ -632,7 +640,7 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? Colors.white : AppColors.textPrimary,
+                    color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -694,7 +702,7 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                    color: isSelected ? Colors.white : AppColors.textSecondary,
+                    color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                 ),
               ),
@@ -715,7 +723,7 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: AppColors.divider)),
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: Row(
         children: [
@@ -864,7 +872,7 @@ class _NavBtn extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(22),
           onTap: onTap,
-          child: Icon(icon, color: AppColors.textSecondary, size: 22),
+          child: Icon(icon, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), size: 22),
         ),
       ),
     );
@@ -890,19 +898,20 @@ class _DayCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     Color bg = Colors.transparent;
     Color fg;
 
     if (!inRange) {
-      fg = AppColors.textHint.withOpacity(0.35);
+      fg = colorScheme.onSurface.withOpacity(0.25);
     } else if (selected) {
-      bg = AppColors.primary;
+      bg = colorScheme.primary;
       fg = Colors.white;
     } else if (today) {
-      bg = AppColors.primary.withOpacity(0.12);
-      fg = AppColors.primary;
+      bg = colorScheme.primary.withOpacity(0.12);
+      fg = colorScheme.primary;
     } else {
-      fg = isFriday ? AppColors.returned : AppColors.textPrimary;
+      fg = isFriday ? AppColors.returned : colorScheme.onSurface;
     }
 
     return GestureDetector(
