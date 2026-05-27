@@ -9,7 +9,7 @@ class AppSettings extends Equatable {
   final bool darkMode;
 
   const AppSettings({
-    this.notificationsEnabled = true,
+    this.notificationsEnabled = false,
     this.reminderLeadDays = 3,
     this.reminderHour = 9,
     this.overdueReminderFrequencyHours = 24,
