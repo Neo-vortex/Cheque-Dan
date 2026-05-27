@@ -39,10 +39,65 @@ class _ChequeBookFormScreenState extends State<ChequeBookFormScreen> {
       _bankId = b.bankId;
       _bankName = b.bankName;
     }
+
+    // Auto-fill: when any two of the three page fields are filled, compute the third
+    _totalPagesCtrl.addListener(_autoFillPages);
+    _startCtrl.addListener(_autoFillPages);
+    _endCtrl.addListener(_autoFillPages);
   }
+
+  /// Called on every change to any of the three page number fields.
+  /// If exactly two fields have valid values, auto-populates the third.
+  void _autoFillPages() {
+    final totalStr = _totalPagesCtrl.text.trim();
+    final startStr = _startCtrl.text.trim();
+    final endStr   = _endCtrl.text.trim();
+
+    final total = int.tryParse(totalStr);
+    final start = int.tryParse(startStr);
+    final end   = int.tryParse(endStr);
+
+    final hasTotal = total != null && total > 0;
+    final hasStart = start != null && start > 0;
+    final hasEnd   = end   != null && end   > 0;
+
+    // Prevent listener re-entrancy
+    if (_autoFilling) return;
+    _autoFilling = true;
+
+    try {
+      if (hasTotal && hasStart && !hasEnd) {
+        // end = start + total - 1
+        final computed = start + total - 1;
+        _endCtrl.text = computed.toString();
+        _endCtrl.selection = TextSelection.collapsed(offset: _endCtrl.text.length);
+      } else if (hasTotal && hasEnd && !hasStart) {
+        // start = end - total + 1
+        final computed = end - total + 1;
+        if (computed > 0) {
+          _startCtrl.text = computed.toString();
+          _startCtrl.selection = TextSelection.collapsed(offset: _startCtrl.text.length);
+        }
+      } else if (hasStart && hasEnd && !hasTotal) {
+        // total = end - start + 1
+        final computed = end - start + 1;
+        if (computed > 0) {
+          _totalPagesCtrl.text = computed.toString();
+          _totalPagesCtrl.selection = TextSelection.collapsed(offset: _totalPagesCtrl.text.length);
+        }
+      }
+    } finally {
+      _autoFilling = false;
+    }
+  }
+
+  bool _autoFilling = false;
 
   @override
   void dispose() {
+    _totalPagesCtrl.removeListener(_autoFillPages);
+    _startCtrl.removeListener(_autoFillPages);
+    _endCtrl.removeListener(_autoFillPages);
     _titleCtrl.dispose();
     _branchCtrl.dispose();
     _totalPagesCtrl.dispose();
@@ -73,26 +128,26 @@ class _ChequeBookFormScreenState extends State<ChequeBookFormScreen> {
 
     if (widget.book != null) {
       context.read<ChequeBookBloc>().add(UpdateChequeBookEvent(
-            widget.book!.copyWith(
-              title: _titleCtrl.text.trim(),
-              bankId: _bankId,
-              bankName: _bankName,
-              branch: _branchCtrl.text.trim(),
-              totalPages: totalPages,
-              startNumber: start,
-              endNumber: end,
-            ),
-          ));
+        widget.book!.copyWith(
+          title: _titleCtrl.text.trim(),
+          bankId: _bankId,
+          bankName: _bankName,
+          branch: _branchCtrl.text.trim(),
+          totalPages: totalPages,
+          startNumber: start,
+          endNumber: end,
+        ),
+      ));
     } else {
       context.read<ChequeBookBloc>().add(CreateChequeBookEvent(
-            title: _titleCtrl.text.trim(),
-            bankId: _bankId!,
-            bankName: _bankName!,
-            branch: _branchCtrl.text.trim(),
-            totalPages: totalPages,
-            startNumber: start,
-            endNumber: end,
-          ));
+        title: _titleCtrl.text.trim(),
+        bankId: _bankId!,
+        bankName: _bankName!,
+        branch: _branchCtrl.text.trim(),
+        totalPages: totalPages,
+        startNumber: start,
+        endNumber: end,
+      ));
     }
     Navigator.pop(context);
   }
@@ -116,7 +171,7 @@ class _ChequeBookFormScreenState extends State<ChequeBookFormScreen> {
                 label: 'عنوان دسته چک',
                 hint: 'مثال: دسته چک ملت شخصی',
                 validator: (v) =>
-                    (v?.trim().isEmpty ?? true) ? 'عنوان الزامی است' : null,
+                (v?.trim().isEmpty ?? true) ? 'عنوان الزامی است' : null,
               ),
             ]),
             const SizedBox(height: 16),
@@ -135,7 +190,7 @@ class _ChequeBookFormScreenState extends State<ChequeBookFormScreen> {
                 label: 'شعبه',
                 hint: 'نام شعبه',
                 validator: (v) =>
-                    (v?.trim().isEmpty ?? true) ? 'شعبه الزامی است' : null,
+                (v?.trim().isEmpty ?? true) ? 'شعبه الزامی است' : null,
               ),
             ]),
             const SizedBox(height: 16),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/banks_list.dart';
-import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_strings.dart';
 
 class BankPickerField extends StatelessWidget {
@@ -19,37 +18,43 @@ class BankPickerField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: () => _openPicker(context),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
+          color: theme.inputDecorationTheme.fillColor ?? colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: errorText != null
-                ? AppColors.returned
-                : AppColors.border,
+                ? colorScheme.error
+                : (isDark
+                ? theme.dividerColor
+                : theme.dividerColor),
           ),
         ),
         child: Row(
           children: [
-            const Icon(Icons.account_balance_outlined,
-                color: AppColors.textSecondary, size: 20),
+            Icon(Icons.account_balance_outlined,
+                color: colorScheme.onSurface.withOpacity(0.55), size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 selectedBankName ?? AppStrings.bankName,
                 style: TextStyle(
                   color: selectedBankName != null
-                      ? AppColors.textPrimary
-                      : AppColors.textHint,
+                      ? colorScheme.onSurface
+                      : colorScheme.onSurface.withOpacity(0.4),
                   fontSize: 14,
                 ),
               ),
             ),
-            const Icon(Icons.arrow_drop_down,
-                color: AppColors.textSecondary),
+            Icon(Icons.arrow_drop_down,
+                color: colorScheme.onSurface.withOpacity(0.55)),
           ],
         ),
       ),
@@ -95,13 +100,15 @@ class _BankPickerSheetState extends State<_BankPickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
     final maxH = MediaQuery.of(context).size.height * 0.75;
 
     return Container(
       height: maxH,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         children: [
@@ -110,7 +117,7 @@ class _BankPickerSheetState extends State<_BankPickerSheet> {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: AppColors.border,
+              color: colorScheme.onSurface.withOpacity(0.2),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -119,11 +126,12 @@ class _BankPickerSheetState extends State<_BankPickerSheet> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'انتخاب بانک',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
+                    color: colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -151,12 +159,12 @@ class _BankPickerSheetState extends State<_BankPickerSheet> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: colorScheme.primary.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.account_balance_outlined,
-                      color: AppColors.primary,
+                      color: colorScheme.primary,
                       size: 20,
                     ),
                   ),
