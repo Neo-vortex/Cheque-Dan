@@ -1,5 +1,4 @@
 name: Android Release
-
 on:
   push:
     branches:
@@ -11,10 +10,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     env:
       FLUTTER_VERSION: "3.41.9"
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,25 +35,23 @@ jobs:
         id: version
         run: |
           VERSION_LINE=$(grep '^version:' pubspec.yaml | awk '{print $2}')
-
           VERSION_NAME=$(echo $VERSION_LINE | cut -d+ -f1)
           BUILD_NUMBER=$(echo $VERSION_LINE | cut -d+ -f2)
-
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
 
-      - name: Build APK
+      - name: Build APK (split per ABI)
         run: |
-          flutter build apk --release \
+          flutter build apk --release --split-per-abi \
             --build-name=${{ steps.version.outputs.version_name }} \
             --build-number=${{ steps.version.outputs.build_number }}
 
-      - name: Rename APK
+      - name: Rename APKs
         run: |
-          mkdir release
-
-          cp build/app/outputs/flutter-apk/app-release.apk \
-            release/cheque-app-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.build_number }}.apk
+          mkdir -p release
+          for apk in build/app/outputs/flutter-apk/app-*-release.apk; do
+            cp "$apk" "release/cheque-app-${{ steps.version.outputs.version_name }}+${{ steps.version.outputs.build_number }}-${apk##*-release.apk}.apk"
+          done
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
