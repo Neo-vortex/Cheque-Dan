@@ -3,7 +3,30 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shamsi_date/shamsi_date.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/models/cheque_model.dart';
+import '../../core/utils/currency_formatter.dart';
 import '../../core/utils/date_utils.dart' as du;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DATA MODEL for hints
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Minimal cheque info needed to build hint text. Built by the caller
+/// (cheque_form_screen) from the loaded cheque list so the picker stays
+/// independent of BLoC.
+class ChequeHintInfo {
+  final DateTime dueDate;
+  final double amount;
+  final String counterpartyName;
+  final ChequeDirection direction;
+
+  const ChequeHintInfo({
+    required this.dueDate,
+    required this.amount,
+    required this.counterpartyName,
+    required this.direction,
+  });
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // PUBLIC FIELD WIDGET
@@ -17,6 +40,10 @@ class PersianDatePickerField extends StatelessWidget {
   final DateTime? firstDate;
   final DateTime? lastDate;
 
+  /// Optional: pass existing cheques so the due-date picker can show hints.
+  /// Leave null for the issue-date picker.
+  final List<ChequeHintInfo>? chequeHints;
+
   const PersianDatePickerField({
     super.key,
     this.selectedDate,
@@ -25,15 +52,18 @@ class PersianDatePickerField extends StatelessWidget {
     this.errorText,
     this.firstDate,
     this.lastDate,
+    this.chequeHints,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final fillColor = theme.inputDecorationTheme.fillColor ?? colorScheme.surfaceVariant;
-    final borderColor = theme.inputDecorationTheme.enabledBorder?.borderSide.color
-        ?? colorScheme.outline;
+    final fillColor = theme.inputDecorationTheme.fillColor ??
+        colorScheme.surfaceVariant;
+    final borderColor =
+        theme.inputDecorationTheme.enabledBorder?.borderSide.color ??
+            colorScheme.outline;
 
     return GestureDetector(
       onTap: () => _pickDate(context),
@@ -95,8 +125,9 @@ class PersianDatePickerField extends StatelessWidget {
   }
 
   Future<void> _pickDate(BuildContext context) async {
-    final initial =
-    selectedDate != null ? Jalali.fromDateTime(selectedDate!) : Jalali.now();
+    final initial = selectedDate != null
+        ? Jalali.fromDateTime(selectedDate!)
+        : Jalali.now();
     final first = firstDate != null
         ? Jalali.fromDateTime(firstDate!)
         : Jalali(1379, 1, 1);
@@ -109,6 +140,7 @@ class PersianDatePickerField extends StatelessWidget {
       initialDate: initial,
       firstDate: first,
       lastDate: last,
+      chequeHints: chequeHints,
     );
 
     if (picked != null) onDateSelected(picked.toDateTime());
@@ -124,6 +156,7 @@ Future<Jalali?> showJalaliDatePickerDialog({
   required Jalali initialDate,
   required Jalali firstDate,
   required Jalali lastDate,
+  List<ChequeHintInfo>? chequeHints,
 }) {
   return showGeneralDialog<Jalali>(
     context: context,
@@ -132,7 +165,8 @@ Future<Jalali?> showJalaliDatePickerDialog({
     barrierColor: Colors.black54,
     transitionDuration: const Duration(milliseconds: 300),
     transitionBuilder: (ctx, anim, _, child) {
-      final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+      final curved =
+      CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
       return FadeTransition(
         opacity: curved,
         child: ScaleTransition(
@@ -145,6 +179,7 @@ Future<Jalali?> showJalaliDatePickerDialog({
       initialDate: initialDate,
       firstDate: firstDate,
       lastDate: lastDate,
+      chequeHints: chequeHints,
     ),
   );
 }
@@ -155,8 +190,10 @@ Future<Jalali?> showJalaliDatePickerDialog({
 
 const _kDialogWidth  = 340.0;
 const _kHeaderHeight = 96.0;
-const _kBodyHeight   = 300.0; // fixed — never changes regardless of mode
+const _kBodyHeight   = 300.0;
 const _kFooterHeight = 60.0;
+// Extra height reserved for the hint strip (animated in/out)
+const _kHintHeight   = 52.0;
 
 const _monthNames = [
   'فروردین', 'اردیبهشت', 'خرداد',
@@ -164,14 +201,12 @@ const _monthNames = [
   'مهر',     'آبان',     'آذر',
   'دی',      'بهمن',     'اسفند',
 ];
-// Jalali week: Saturday first
 const _weekHeaders = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// Convert integer to Persian-digit string (used for ALL numbers now)
 String _p(int n) {
   const d = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
   return n.toString().split('').map((c) {
@@ -180,12 +215,10 @@ String _p(int n) {
   }).join();
 }
 
-// Keep old alias for year labels
 String _pYear(int n) => _p(n);
 
 int _daysInMonth(int y, int m) => Jalali(y, m).monthLength;
 
-/// Saturday-based column offset for the 1st of a given month (0=Sat … 6=Fri)
 int _firstOffset(int y, int m) {
   final wd = Jalali(y, m, 1).toDateTime().weekday;
   return const {6:0, 7:1, 1:2, 2:3, 3:4, 4:5, 5:6}[wd] ?? 0;
@@ -198,6 +231,9 @@ String _weekDayName(int y, int m, int d) {
     4:'پنج‌شنبه', 5:'جمعه', 6:'شنبه', 7:'یکشنبه',
   }[wd] ?? '';
 }
+
+/// Normalize a DateTime to midnight so Map lookups work.
+DateTime _day0(DateTime d) => DateTime(d.year, d.month, d.day);
 
 extension _JalaliX on Jalali {
   bool isBefore(Jalali o) {
@@ -213,6 +249,50 @@ extension _JalaliX on Jalali {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// HINT COMPUTATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+sealed class _HintResult {}
+
+class _ExactHint extends _HintResult {
+  final ChequeHintInfo cheque;
+  _ExactHint(this.cheque);
+}
+
+class _NearestHint extends _HintResult {
+  final ChequeHintInfo cheque;
+  final int daysDiff; // always > 0
+  _NearestHint(this.cheque, this.daysDiff);
+}
+
+class _NoHint extends _HintResult {}
+
+_HintResult _computeHint(
+    DateTime selectedDay, List<ChequeHintInfo> hints) {
+  if (hints.isEmpty) return _NoHint();
+
+  final sel = _day0(selectedDay);
+
+  // Exact match — may be multiple cheques on the same day; pick first
+  final exact = hints.where((h) => _day0(h.dueDate) == sel).toList();
+  if (exact.isNotEmpty) return _ExactHint(exact.first);
+
+  // Nearest by absolute day distance
+  ChequeHintInfo? nearest;
+  int minDiff = 999999;
+  for (final h in hints) {
+    final diff = _day0(h.dueDate).difference(sel).inDays.abs();
+    if (diff < minDiff) {
+      minDiff = diff;
+      nearest = h;
+    }
+  }
+  if (nearest != null) return _NearestHint(nearest, minDiff);
+
+  return _NoHint();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // DIALOG WIDGET
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -222,11 +302,13 @@ class _JalaliPickerDialog extends StatefulWidget {
   final Jalali initialDate;
   final Jalali firstDate;
   final Jalali lastDate;
+  final List<ChequeHintInfo>? chequeHints;
 
   const _JalaliPickerDialog({
     required this.initialDate,
     required this.firstDate,
     required this.lastDate,
+    this.chequeHints,
   });
 
   @override
@@ -239,13 +321,16 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
   late int _year, _month, _day;
   _Mode _mode = _Mode.calendar;
 
-  // Slide animation for month navigation
   late AnimationController _slideCtrl;
   int _slideDir = 1;
   late int _prevYear, _prevMonth;
 
-  // Fade animation for mode switching
   late AnimationController _modeCtrl;
+
+  // Pre-built lookup: normalized DateTime → ChequeHintInfo (first cheque that day)
+  late final Map<DateTime, ChequeHintInfo> _hintMap;
+  // Sorted list for nearest-search (avoids re-sorting on every tap)
+  late final List<ChequeHintInfo> _sortedHints;
 
   @override
   void initState() {
@@ -258,10 +343,16 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
 
     _slideCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 280));
-
     _modeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 200),
+        vsync: this,
+        duration: const Duration(milliseconds: 200),
         value: 1.0);
+
+    // Build hint structures once
+    final hints = widget.chequeHints ?? [];
+    _hintMap = { for (final h in hints) _day0(h.dueDate): h };
+    _sortedHints = List.of(hints)
+      ..sort((a, b) => a.dueDate.compareTo(b.dueDate));
   }
 
   @override
@@ -275,7 +366,6 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
 
   void _setMode(_Mode m) {
     if (_mode == m) {
-      // clicking same chip → go back to calendar
       _switchMode(_Mode.calendar);
     } else {
       _switchMode(m);
@@ -315,21 +405,39 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
     return !j.isBefore(widget.firstDate) && !j.isAfter(widget.lastDate);
   }
 
+  // ── current selected date as DateTime ────────────────────────────────────
+
+  DateTime get _selectedDateTime =>
+      Jalali(_year, _month, _day).toDateTime();
+
   // ─────────────────────────────────────────────────────────────────────────
   // BUILD
   // ─────────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
+    final hasHints = widget.chequeHints != null && widget.chequeHints!.isNotEmpty;
+    final hintResult = hasHints
+        ? _computeHint(_selectedDateTime, _sortedHints)
+        : _NoHint();
+    final showHintStrip = hasHints && hintResult is! _NoHint;
+
+    final totalHeight = _kHeaderHeight +
+        _kBodyHeight +
+        _kFooterHeight +
+        (showHintStrip ? _kHintHeight : 0);
+
     final surfaceColor = Theme.of(context).colorScheme.surface;
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Center(
         child: Material(
           color: Colors.transparent,
-          child: Container(
-            width:  _kDialogWidth,
-            height: _kHeaderHeight + _kBodyHeight + _kFooterHeight,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: _kDialogWidth,
+            height: totalHeight,
             decoration: BoxDecoration(
               color: surfaceColor,
               borderRadius: BorderRadius.circular(24),
@@ -354,6 +462,9 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
                       child: _buildBody(),
                     ),
                   ),
+                  // Hint strip — only when chequeHints provided and a result exists
+                  if (showHintStrip)
+                    _HintStrip(result: hintResult),
                   _buildFooter(),
                 ],
               ),
@@ -365,7 +476,7 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // HEADER
+  // HEADER (unchanged)
   // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildHeader() {
@@ -386,7 +497,6 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Selected date
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -413,7 +523,7 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
                     ),
                   ),
                   child: Text(
-                    '${ _p(_day)} ${_monthNames[_month - 1]} ${_pYear(_year)}',
+                    '${_p(_day)} ${_monthNames[_month - 1]} ${_pYear(_year)}',
                     key: ValueKey('$_year/$_month/$_day'),
                     style: const TextStyle(
                       color: Colors.white,
@@ -425,7 +535,6 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
               ],
             ),
           ),
-          // Month / Year chips
           Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -459,8 +568,6 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
       case _Mode.year:     return _buildYearGrid();
     }
   }
-
-  // ── Calendar view ──────────────────────────────────────────────────────────
 
   Widget _buildCalendarView() {
     return Column(
@@ -510,7 +617,9 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: h == 'ج' ? AppColors.returned : Theme.of(context).colorScheme.onSurface.withOpacity(0.45),
+                  color: h == 'ج'
+                      ? AppColors.returned
+                      : Theme.of(context).colorScheme.onSurface.withOpacity(0.45),
                 ),
               ),
             ),
@@ -526,20 +635,21 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
       animation: _slideCtrl,
       builder: (_, __) {
         final forward = _slideDir > 0;
-        final t = CurvedAnimation(parent: _slideCtrl, curve: Curves.easeOutCubic);
+        final t = CurvedAnimation(
+            parent: _slideCtrl, curve: Curves.easeOutCubic);
         final inStart  = forward ? const Offset(1, 0) : const Offset(-1, 0);
         final outEnd   = forward ? const Offset(-1, 0) : const Offset(1, 0);
-        final animating = _slideCtrl.value > 0 && _slideCtrl.value < 1;
+        final animating =
+            _slideCtrl.value > 0 && _slideCtrl.value < 1;
 
         return Stack(
           children: [
-            // Previous month sliding out (only during animation)
             if (animating)
               SlideTransition(
-                position: Tween(begin: Offset.zero, end: outEnd).animate(t),
+                position:
+                Tween(begin: Offset.zero, end: outEnd).animate(t),
                 child: _gridWidget(_prevYear, _prevMonth, rows),
               ),
-            // Current month sliding in (always visible)
             SlideTransition(
               position: animating
                   ? Tween(begin: inStart, end: Offset.zero).animate(t)
@@ -568,19 +678,23 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
                 if (d < 1 || d > dim) {
                   return const Expanded(child: SizedBox());
                 }
+                final cellDate = Jalali(year, month, d).toDateTime();
                 final inRange  = _inRange(year, month, d);
                 final selected = year == _year && month == _month && d == _day;
                 final isToday  = today.year == year && today.month == month
                     && today.day == d;
                 final isFri    = col == 6;
+                // Dot: does any cheque fall on this day?
+                final hasCheque = _hintMap.containsKey(_day0(cellDate));
 
                 return Expanded(
                   child: _DayCell(
-                    dayLabel: _p(d),          // Persian digits
+                    dayLabel: _p(d),
                     selected: selected,
                     today: isToday,
                     inRange: inRange,
                     isFriday: isFri,
+                    hasCheque: hasCheque,
                     onTap: inRange
                         ? () {
                       HapticFeedback.selectionClick();
@@ -599,7 +713,7 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
     );
   }
 
-  // ── Month grid (4×3) ──────────────────────────────────────────────────────
+  // ── Month grid ────────────────────────────────────────────────────────────
 
   Widget _buildMonthGrid() {
     return Padding(
@@ -626,7 +740,9 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : Theme.of(context).colorScheme.surfaceVariant,
+                color: isSelected
+                    ? AppColors.primary
+                    : Theme.of(context).colorScheme.surfaceVariant,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: isSelected
@@ -639,8 +755,11 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
                   _monthNames[i],
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface,
+                    fontWeight:
+                    isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected
+                        ? Colors.white
+                        : Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ),
@@ -651,14 +770,12 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
     );
   }
 
-  // ── Year grid ──────────────────────────────────────────────────────────────
+  // ── Year grid ─────────────────────────────────────────────────────────────
 
   Widget _buildYearGrid() {
     final firstY = widget.firstDate.year;
     final lastY  = widget.lastDate.year;
     final years  = List.generate(lastY - firstY + 1, (i) => firstY + i);
-
-    // Scroll to selected year
     final scrollCtrl = ScrollController(
       initialScrollOffset: ((_year - firstY) ~/ 4) * 52.0,
     );
@@ -693,7 +810,9 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
                 color: isSelected ? AppColors.primary : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isSelected ? AppColors.primary : Colors.transparent,
+                  color: isSelected
+                      ? AppColors.primary
+                      : Colors.transparent,
                 ),
               ),
               child: Center(
@@ -701,8 +820,14 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
                   _pYear(y),
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                    color: isSelected ? Colors.white : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    fontWeight:
+                    isSelected ? FontWeight.w700 : FontWeight.w400,
+                    color: isSelected
+                        ? Colors.white
+                        : Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.7),
                   ),
                 ),
               ),
@@ -722,8 +847,9 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
       height: _kFooterHeight,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+            top: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: Row(
         children: [
@@ -745,10 +871,12 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
             style: TextButton.styleFrom(
               foregroundColor: AppColors.textSecondary,
               minimumSize: Size.zero,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            child: const Text('انصراف', style: TextStyle(fontSize: 14)),
+            child:
+            const Text('انصراف', style: TextStyle(fontSize: 14)),
           ),
           const SizedBox(width: 8),
           FilledButton(
@@ -761,12 +889,14 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 20, vertical: 8),
               minimumSize: Size.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
             child: const Text('تأیید',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                style: TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -777,18 +907,17 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
     HapticFeedback.lightImpact();
     final t = Jalali.now();
     if (!_inRange(t.year, t.month, t.day)) return;
-    // Always switch to calendar first, then update date
     if (_mode != _Mode.calendar) {
       _modeCtrl.reverse().then((_) {
         if (!mounted) return;
         setState(() {
-          _mode  = _Mode.calendar;
+          _mode = _Mode.calendar;
           _prevYear  = _year;
           _prevMonth = _month;
           _year  = t.year;
           _month = t.month;
           _day   = t.day;
-          _slideCtrl.value = 0; // no slide animation — instant
+          _slideCtrl.value = 0;
         });
         _modeCtrl.forward();
       });
@@ -802,6 +931,86 @@ class _JalaliPickerDialogState extends State<_JalaliPickerDialog>
         _slideCtrl.value = 0;
       });
     }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HINT STRIP
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _HintStrip extends StatelessWidget {
+  final _HintResult result;
+
+  const _HintStrip({required this.result});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final (IconData icon, Color color, String text) = switch (result) {
+      _ExactHint(:final cheque) => (
+      Icons.receipt_long_outlined,
+      AppColors.primary,
+      _exactText(cheque),
+      ),
+      _NearestHint(:final cheque, :final daysDiff) => (
+      Icons.info_outline,
+      AppColors.textSecondary,
+      _nearestText(cheque, daysDiff),
+      ),
+      _ => (Icons.info_outline, AppColors.textSecondary, ''),
+    };
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 200),
+      child: Container(
+        key: ValueKey(text),
+        height: _kHintHeight,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(isDark ? 0.15 : 0.08),
+          border: Border(
+            top: BorderSide(color: color.withOpacity(0.25)),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: isDark
+                      ? color.withOpacity(0.9)
+                      : color == AppColors.primary
+                      ? AppColors.primaryDark
+                      : AppColors.textSecondary,
+                  height: 1.4,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _exactText(ChequeHintInfo c) {
+    final dir = c.direction == ChequeDirection.issued ? 'صادره به' : 'دریافتی از';
+    final amt = CurrencyFormatter.formatCompact(c.amount);
+    return 'چک $dir ${c.counterpartyName} — $amt در همین تاریخ سررسید دارد';
+  }
+
+  String _nearestText(ChequeHintInfo c, int days) {
+    final dir = c.direction == ChequeDirection.issued ? 'صادره به' : 'دریافتی از';
+    final amt = CurrencyFormatter.formatCompact(c.amount);
+    final due = du.DateUtils.toPersianFull(c.dueDate);
+    final daysP = _p(days);
+    return 'نزدیک‌ترین چک: $dir ${c.counterpartyName}، $amt — سررسید $due (فاصله $daysP روز)';
   }
 }
 
@@ -842,11 +1051,14 @@ class _HeaderChip extends StatelessWidget {
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 12,
-                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight:
+                  active ? FontWeight.w700 : FontWeight.w500,
                 )),
             const SizedBox(width: 2),
             Icon(
-              active ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+              active
+                  ? Icons.keyboard_arrow_up
+                  : Icons.keyboard_arrow_down,
               color: Colors.white.withOpacity(0.85),
               size: 14,
             ),
@@ -866,13 +1078,19 @@ class _NavBtn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 44, height: 44,
+      width: 44,
+      height: 44,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(22),
           onTap: onTap,
-          child: Icon(icon, color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6), size: 22),
+          child: Icon(icon,
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withOpacity(0.6),
+              size: 22),
         ),
       ),
     );
@@ -880,11 +1098,12 @@ class _NavBtn extends StatelessWidget {
 }
 
 class _DayCell extends StatelessWidget {
-  final String dayLabel;  // plain ASCII "1".."31"
+  final String dayLabel;
   final bool selected;
   final bool today;
   final bool inRange;
   final bool isFriday;
+  final bool hasCheque;   // ← new
   final VoidCallback? onTap;
 
   const _DayCell({
@@ -893,6 +1112,7 @@ class _DayCell extends StatelessWidget {
     required this.today,
     required this.inRange,
     required this.isFriday,
+    required this.hasCheque,
     this.onTap,
   });
 
@@ -914,6 +1134,9 @@ class _DayCell extends StatelessWidget {
       fg = isFriday ? AppColors.returned : colorScheme.onSurface;
     }
 
+    // Dot color: white when selected, primary otherwise
+    final dotColor = selected ? Colors.white.withOpacity(0.85) : AppColors.primary;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -921,15 +1144,39 @@ class _DayCell extends StatelessWidget {
         curve: Curves.easeOut,
         margin: const EdgeInsets.all(2),
         decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
-        child: Center(
-          child: Text(
-            dayLabel,
-            style: TextStyle(
-              fontSize: 13,
-              color: fg,
-              fontWeight: selected || today ? FontWeight.w700 : FontWeight.normal,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Day number — shifted slightly up when dot is shown
+            Align(
+              alignment: hasCheque && !selected
+                  ? const Alignment(0, -0.2)
+                  : Alignment.center,
+              child: Text(
+                dayLabel,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: fg,
+                  fontWeight: selected || today
+                      ? FontWeight.w700
+                      : FontWeight.normal,
+                ),
+              ),
             ),
-          ),
+            // Small dot at the bottom of the cell
+            if (hasCheque)
+              Positioned(
+                bottom: 2,
+                child: Container(
+                  width: 4,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: dotColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
