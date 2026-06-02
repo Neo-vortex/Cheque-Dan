@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -8,27 +10,8 @@ import 'package:ultralytics_yolo/ultralytics_yolo.dart';
 
 import '../../core/constants/app_colors.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// ChequeYoloScannerScreen
-//
-// Opens the camera via YOLOView, overlays the best detection bounding-box,
-// and lets the user tap "Capture" to crop just the cheque region and return
-// it as a saved image path.
-//
-// Usage:
-//   final String? path = await Navigator.push<String>(
-//     context,
-//     MaterialPageRoute(builder: (_) => const ChequeYoloScannerScreen()),
-//   );
-//   if (path != null) { /* use cropped image */ }
-// ─────────────────────────────────────────────────────────────────────────────
-
 class ChequeYoloScannerScreen extends StatefulWidget {
-  /// Flutter asset path to your TFLite model, e.g.
-  /// 'assets/models/cheque_detect.tflite'
   final String modelAssetPath;
-
-  /// Confidence threshold (0‥1) below which detections are ignored.
   final double confidenceThreshold;
 
   const ChequeYoloScannerScreen({
@@ -44,29 +27,26 @@ class ChequeYoloScannerScreen extends StatefulWidget {
 
 class _ChequeYoloScannerScreenState extends State<ChequeYoloScannerScreen>
     with TickerProviderStateMixin {
-  // ── YOLO ────────────────────────────────────────────────────────────────────
   final YOLOViewController _yoloController = YOLOViewController();
-
-  /// Best detection from the last frame; null if nothing found yet.
   YOLOResult? _bestDetection;
-
-  /// Live preview widget size – captured via LayoutBuilder.
   Size _previewSize = Size.zero;
-
-  // ── State ───────────────────────────────────────────────────────────────────
   bool _isCapturing = false;
   bool _modelReady = false;
 
-  // ── Pulse animation for the bounding box ────────────────────────────────────
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
-
-  // ── RepaintBoundary key – used to screenshot the camera frame ────────────────
   final GlobalKey _cameraKey = GlobalKey();
 
   @override
   void initState() {
     super.initState();
+
+    // Force landscape for cheque scanning.
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -78,16 +58,17 @@ class _ChequeYoloScannerScreenState extends State<ChequeYoloScannerScreen>
 
   @override
   void dispose() {
+    // Restore all orientations when leaving the scanner.
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     _pulseController.dispose();
     super.dispose();
   }
 
-  // ── onResult callback from YOLOView ──────────────────────────────────────────
-  // onResult receives List<YOLOResult>; each YOLOResult has:
-  //   - double confidence        (non-nullable)
-  //   - Rect boundingBox         (pixel coords inside the view)
-  //   - Rect normalizedBox       (0‥1 coords)
-  //   - String className
   void _onResults(List<YOLOResult> results) {
     if (!mounted) return;
 
@@ -107,7 +88,28 @@ class _ChequeYoloScannerScreenState extends State<ChequeYoloScannerScreen>
     });
   }
 
-  // ── Capture ───────────────────────────────────────────────────────────────────
+  /// Expands a normalised [0,1] rect so the longer side grows by [expandFrac]
+  /// on each of its two edges, and the shorter side grows by the same absolute
+  /// amount (keeping the expansion visually balanced).
+  Rect _expandBox(Rect norm, double expandFrac) {
+    final double w = norm.width;
+    final double h = norm.height;
+
+    // Half-expansion for each edge of the longer side.
+    final double longHalf  = (w >= h ? w : h) * expandFrac / 2;
+    final double shortHalf = (w >= h ? h : w) * expandFrac / 2;
+
+    final double dw = w >= h ? longHalf  : shortHalf;
+    final double dh = w >= h ? shortHalf : longHalf;
+
+    return Rect.fromLTRB(
+      (norm.left   - dw).clamp(0.0, 1.0),
+      (norm.top    - dh).clamp(0.0, 1.0),
+      (norm.right  + dw).clamp(0.0, 1.0),
+      (norm.bottom + dh).clamp(0.0, 1.0),
+    );
+  }
+
   Future<void> _capture() async {
     if (_isCapturing) return;
     if (_bestDetection == null) {
@@ -119,7 +121,7 @@ class _ChequeYoloScannerScreenState extends State<ChequeYoloScannerScreen>
     setState(() => _isCapturing = true);
 
     try {
-      // 1. Screenshot the camera preview via the RepaintBoundary.
+      // 1. Screenshot the camera preview.
       final boundary = _cameraKey.currentContext?.findRenderObject()
       as RenderRepaintBoundary?;
       if (boundary == null) throw Exception('render boundary not found');
@@ -129,29 +131,26 @@ class _ChequeYoloScannerScreenState extends State<ChequeYoloScannerScreen>
       await fullImage.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) throw Exception('failed to encode image');
 
-      // 2. Decode so we can crop.
+      // 2. Decode.
       final Uint8List fullPng = byteData.buffer.asUint8List();
       final ui.Codec codec = await ui.instantiateImageCodec(fullPng);
       final ui.FrameInfo frame = await codec.getNextFrame();
       final ui.Image decoded = frame.image;
-
       final int imgW = decoded.width;
       final int imgH = decoded.height;
 
-      // 3. normalizedBox holds [0,1] coords – scale to screenshot pixel space.
-      //    pixelRatio: 3.0 above means screenshot is 3× the widget size.
-      final Rect norm = _bestDetection!.normalizedBox;
-      const double pad = 0.012; // 1.2 % padding around the cheque
+      // 3. Expand the box: longer side gets +10 %, same absolute px on shorter side.
+      final Rect expanded = _expandBox(_bestDetection!.normalizedBox, 0.10);
 
-      final double l = ((norm.left   - pad).clamp(0.0, 1.0) * imgW);
-      final double t = ((norm.top    - pad).clamp(0.0, 1.0) * imgH);
-      final double r = ((norm.right  + pad).clamp(0.0, 1.0) * imgW);
-      final double b = ((norm.bottom + pad).clamp(0.0, 1.0) * imgH);
+      final double l = expanded.left   * imgW;
+      final double t = expanded.top    * imgH;
+      final double r = expanded.right  * imgW;
+      final double b = expanded.bottom * imgH;
 
       final int cropW = (r - l).round().clamp(1, imgW);
       final int cropH = (b - t).round().clamp(1, imgH);
 
-      // 4. Crop using a Canvas.
+      // 4. Crop.
       final ui.PictureRecorder recorder = ui.PictureRecorder();
       final Canvas canvas = Canvas(recorder);
       canvas.drawImageRect(
@@ -167,7 +166,7 @@ class _ChequeYoloScannerScreenState extends State<ChequeYoloScannerScreen>
       await cropped.toByteData(format: ui.ImageByteFormat.png);
       if (croppedBytes == null) throw Exception('failed to encode crop');
 
-      // 5. Save to temp file and pop with path.
+      // 5. Save and return.
       final dir = await getTemporaryDirectory();
       final file = File(
           '${dir.path}/cheque_scan_${DateTime.now().millisecondsSinceEpoch}.png');
@@ -192,7 +191,6 @@ class _ChequeYoloScannerScreenState extends State<ChequeYoloScannerScreen>
     );
   }
 
-  // ── UI ────────────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -206,11 +204,8 @@ class _ChequeYoloScannerScreenState extends State<ChequeYoloScannerScreen>
             child: LayoutBuilder(
               builder: (context, constraints) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
-                  final sz =
-                  Size(constraints.maxWidth, constraints.maxHeight);
-                  if (sz != _previewSize) {
-                    setState(() => _previewSize = sz);
-                  }
+                  final sz = Size(constraints.maxWidth, constraints.maxHeight);
+                  if (sz != _previewSize) setState(() => _previewSize = sz);
                 });
                 return YOLOView(
                   modelPath: widget.modelAssetPath,
@@ -219,18 +214,16 @@ class _ChequeYoloScannerScreenState extends State<ChequeYoloScannerScreen>
                   onResult: _onResults,
                   confidenceThreshold: widget.confidenceThreshold,
                   iouThreshold: 0.45,
-                  // Disable the built-in overlay so we draw our own
                   showOverlays: false,
                 );
               },
             ),
           ),
 
-          // ── Our bounding-box overlay ───────────────────────────────────────
+          // ── Bounding-box overlay (shows expanded box) ──────────────────────
           if (_bestDetection != null && _previewSize != Size.zero)
             _BoundingBoxOverlay(
-              // normalizedBox gives [0,1] coords relative to the widget size
-              normalizedBox: _bestDetection!.normalizedBox,
+              normalizedBox: _expandBox(_bestDetection!.normalizedBox, 0.10),
               previewSize: _previewSize,
               pulse: _pulseAnimation,
             ),
@@ -300,7 +293,7 @@ class _ChequeYoloScannerScreenState extends State<ChequeYoloScannerScreen>
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _BoundingBoxOverlay extends StatelessWidget {
-  final Rect normalizedBox; // values in [0,1]
+  final Rect normalizedBox;
   final Size previewSize;
   final Animation<double> pulse;
 
@@ -345,14 +338,12 @@ class _BoxPainter extends CustomPainter {
       height: rect.height * scale,
     );
 
-    // Dim outside the box.
     final outer = Path()
       ..addRect(Rect.fromLTWH(0, 0, size.width, size.height))
       ..addRRect(RRect.fromRectAndRadius(scaled, const Radius.circular(8)))
       ..fillType = PathFillType.evenOdd;
     canvas.drawPath(outer, Paint()..color = Colors.black.withOpacity(0.35));
 
-    // Green border.
     canvas.drawRRect(
       RRect.fromRectAndRadius(scaled, const Radius.circular(8)),
       Paint()
@@ -361,7 +352,6 @@ class _BoxPainter extends CustomPainter {
         ..strokeWidth = 2.5,
     );
 
-    // Corner brackets.
     const double cs = 18;
     final cp = Paint()
       ..color = AppColors.primaryLight
@@ -449,7 +439,7 @@ class _GuideMessage extends StatelessWidget {
       msg = 'چک پیدا شد – برای گرفتن عکس لمس کنید';
       bg = AppColors.primary.withOpacity(0.85);
     } else {
-      msg = 'دوربین را روی چک نگه دارید';
+      msg = 'دوربین را به صورت افقی روی چک نگه دارید';
       bg = Colors.black54;
     }
 
@@ -554,6 +544,7 @@ class _BottomBar extends StatelessWidget {
               ),
               child: isCapturing
                   ? const Padding(
+
                 padding: EdgeInsets.all(20),
                 child: CircularProgressIndicator(
                   color: Colors.white,
