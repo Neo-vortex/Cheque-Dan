@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/constants/app_colors.dart';
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Doc scanner import — guarded so it doesn't break non-mobile builds
-// ═══════════════════════════════════════════════════════════════════════════
-import 'package:flutter_doc_scanner/flutter_doc_scanner.dart';
+import 'cheque_yolo_scanner_screen.dart';
 
 class ChequeImagePicker extends StatelessWidget {
   final List<String> imagePaths;
@@ -25,7 +21,8 @@ class ChequeImagePicker extends StatelessWidget {
     try {
       final picker = ImagePicker();
       final remaining = maxImages - imagePaths.length;
-      final files = await picker.pickMultiImage(imageQuality: 90, limit: remaining);
+      final files =
+          await picker.pickMultiImage(imageQuality: 90, limit: remaining);
       if (files.isEmpty) return;
       final paths = [...imagePaths, ...files.map((f) => f.path)];
       onChanged(paths.take(maxImages).toList());
@@ -37,8 +34,8 @@ class ChequeImagePicker extends StatelessWidget {
   Future<void> _pickFromCamera(BuildContext context) async {
     try {
       final picker = ImagePicker();
-      final file = await picker.pickImage(
-          source: ImageSource.camera, imageQuality: 90);
+      final file =
+          await picker.pickImage(source: ImageSource.camera, imageQuality: 90);
       if (file == null) return;
       onChanged([...imagePaths, file.path]);
     } catch (e) {
@@ -46,26 +43,34 @@ class ChequeImagePicker extends StatelessWidget {
     }
   }
 
-  Future<void> _scanDocument(BuildContext context) async {
+  /// Opens the YOLO cheque scanner and adds the returned cropped image path.
+  Future<void> _scanWithYolo(BuildContext context) async {
     try {
-      // getScannedDocumentAsImages returns dynamic (List at runtime)
-      final dynamic result = await FlutterDocScanner()
-          .getScannedDocumentAsImages(page: 4);
-      if (result == null) return;
-      final List<String> scanned = (result as List)
-          .map((p) => p.toString())
-          .toList();
-      if (scanned.isEmpty) return;
-      final paths = [...imagePaths, ...scanned];
+      final String? croppedPath = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const ChequeYoloScannerScreen(
+            // Point this at wherever you place your tflite model in assets.
+            modelAssetPath: 'assets/models/cheque_detect.tflite',
+            confidenceThreshold: 0.45,
+          ),
+          fullscreenDialog: true,
+        ),
+      );
+
+      if (croppedPath == null) return; // user cancelled
+
+      final paths = [...imagePaths, croppedPath];
       onChanged(paths.take(maxImages).toList());
     } catch (e) {
-      _showError(context, 'خطا در اسکن سند');
+      _showError(context, 'خطا در اسکن چک: $e');
     }
   }
 
   void _showError(BuildContext context, String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: AppColors.returned),
+      SnackBar(
+          content: Text(msg), backgroundColor: AppColors.returned),
     );
   }
 
@@ -96,7 +101,6 @@ class ChequeImagePicker extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Thumbnails grid
         if (imagePaths.isNotEmpty) ...[
           SizedBox(
             height: 90,
@@ -113,7 +117,6 @@ class ChequeImagePicker extends StatelessWidget {
           ),
           const SizedBox(height: 10),
         ],
-        // Action buttons
         if (canAdd)
           Row(
             children: [
@@ -132,7 +135,7 @@ class ChequeImagePicker extends StatelessWidget {
               _ActionBtn(
                 icon: Icons.document_scanner_outlined,
                 label: 'اسکن',
-                onTap: () => _scanDocument(context),
+                onTap: () => _scanWithYolo(context),
                 highlight: true,
               ),
             ],
@@ -150,6 +153,8 @@ class ChequeImagePicker extends StatelessWidget {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _Thumbnail extends StatelessWidget {
   final String path;
@@ -198,7 +203,8 @@ class _Thumbnail extends StatelessWidget {
                   color: Colors.black54,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.close, color: Colors.white, size: 14),
+                child:
+                    const Icon(Icons.close, color: Colors.white, size: 14),
               ),
             ),
           ),
@@ -207,6 +213,8 @@ class _Thumbnail extends StatelessWidget {
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ActionBtn extends StatelessWidget {
   final IconData icon;
@@ -267,9 +275,9 @@ class _ActionBtn extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// FULL SCREEN PREVIEW
-// ═══════════════════════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────────────────────
+// Full-screen image preview (unchanged from original)
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ImagePreviewScreen extends StatelessWidget {
   final String path;
@@ -306,7 +314,8 @@ class _ImagePreviewScreen extends StatelessWidget {
                         onDelete();
                       },
                       child: const Text('حذف',
-                          style: TextStyle(color: AppColors.returned)),
+                          style:
+                              TextStyle(color: AppColors.returned)),
                     ),
                   ],
                 ),
