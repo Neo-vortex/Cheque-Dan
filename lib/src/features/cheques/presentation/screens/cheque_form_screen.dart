@@ -377,14 +377,42 @@ class _ChequeFormScreenState extends State<ChequeFormScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: PersianDatePickerField(
-                      selectedDate: _dueDate,
-                      label: AppStrings.dueDate,
-                      onDateSelected: (d) => setState(() => _dueDate = d),
-                      firstDate: _issueDate,
-                    ),
-                  ),
+    // AFTER
+    Expanded(
+    child: BlocBuilder<ChequeBloc, ChequeState>(
+    builder: (context, chequeState) {
+    // Build hint list from whatever cheques are currently loaded,
+    // excluding the cheque being edited (so it doesn't hint itself).
+    final allCheques = switch (chequeState) {
+    ChequesLoaded(:final cheques) => cheques,
+    ChequeOperationSuccess(:final cheques) => cheques,
+    _ => <Cheque>[],
+    };
+
+    final hints = allCheques
+        .where((c) =>
+    !c.isArchived &&
+    c.isActive &&
+    // Exclude self when editing
+    (widget.cheque == null || c.id != widget.cheque!.id))
+        .map((c) => ChequeHintInfo(
+    dueDate: c.dueDate,
+    amount: c.amount,
+    counterpartyName: c.counterpartyName,
+    direction: c.direction,
+    ))
+        .toList();
+
+    return PersianDatePickerField(
+    selectedDate: _dueDate,
+    label: AppStrings.dueDate,
+    onDateSelected: (d) => setState(() => _dueDate = d),
+    firstDate: _issueDate,
+    chequeHints: hints.isEmpty ? null : hints,
+    );
+    },
+    ),
+    ),
                 ],
               ),
               const SizedBox(height: 16),

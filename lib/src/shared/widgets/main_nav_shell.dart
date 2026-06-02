@@ -11,6 +11,8 @@ import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/cheque_books/presentation/screens/cheque_books_screen.dart';
 import '../../features/cheques/presentation/blocs/cheque_bloc.dart';
 import '../../features/cheque_books/presentation/blocs/cheque_book_bloc.dart';
+import '../../features/ai_assistant/presentation/blocs/ai_assistant_bloc.dart';
+import '../../features/ai_assistant/presentation/screens/ai_assistant_screen.dart';
 import 'time_origin_widgets.dart';
 
 class MainNavShell extends StatefulWidget {
@@ -72,6 +74,23 @@ class _MainNavShellState extends State<MainNavShell> {
               ],
             )
           : null,
+      // ─── AI Assistant FAB ────────────────────────────────────────────────
+/*      floatingActionButton: _AiAssistantFab(
+        onTap: () => {Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (ctx) => MultiBlocProvider(
+              providers: [
+                BlocProvider(create: (_) => AiAssistantBloc()),
+                BlocProvider.value(value: ctx.read<ChequeBloc>()),
+              ],
+              child: const AiAssistantScreen(),
+            ),
+          ),
+        )},
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,*/
+      // ─────────────────────────────────────────────────────────────────────
       body: SafeArea(
         // Bug 9 fix: wrap in SafeArea so safe area constraints are
         // always respected regardless of the TimeOriginBanner state.
@@ -122,6 +141,55 @@ class _MainNavShellState extends State<MainNavShell> {
             label: AppStrings.settings,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Prominent AI assistant floating action button
+class _AiAssistantFab extends StatelessWidget {
+  final VoidCallback onTap;
+  const _AiAssistantFab({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppColors.primaryDark, AppColors.primary, AppColors.primaryLight],
+            begin: Alignment.centerRight,
+            end: Alignment.centerLeft,
+          ),
+          borderRadius: BorderRadius.circular(26),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.45),
+              blurRadius: 14,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+            SizedBox(width: 8),
+            Text(
+              'دستیار هوشمند',
+              style: TextStyle(
+                fontFamily: 'Vazirmatn',
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
