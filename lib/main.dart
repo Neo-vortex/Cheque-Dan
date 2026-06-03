@@ -118,36 +118,50 @@ class AppEntryPoint extends StatefulWidget {
 }
 
 class _AppEntryPointState extends State<AppEntryPoint> {
-  bool _checkingReconciliation = true;
-  bool _needsReconciliation = false;
+  // null = still deciding, false = go straight to shell, true = show reconciliation
+  bool? _needsReconciliation;
 
-  @override
-  void initState() {
-    super.initState();
-    _checkReconciliation();
-  }
+  /// Called once settings are confirmed loaded and cheque check is done.
+  Future<void> _checkReconciliation(bool settingEnabled) async {
+    if (!settingEnabled) {
+      // Toggle is off — skip the screen entirely.
+      if (mounted) setState(() => _needsReconciliation = false);
+      return;
+    }
 
-  Future<void> _checkReconciliation() async {
     final repo = context.read<ChequeRepository>();
     final needs = await repo.hasChequesNeedingAttention();
     if (mounted) {
-      setState(() {
-        _needsReconciliation = needs;
-        _checkingReconciliation = false;
-      });
+      setState(() => _needsReconciliation = needs);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_checkingReconciliation) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-    if (_needsReconciliation) {
-      return ReconciliationScreen(
-        onComplete: () => setState(() => _needsReconciliation = false),
-      );
-    }
-    return const MainNavShell();
+    return BlocListener<SettingsBloc, SettingsState>(
+      // Fire the cheque check as soon as settings finish loading.
+      // listenWhen guards against re-firing on subsequent settings updates.
+      listenWhen: (prev, curr) =>
+          prev is! SettingsLoaded && curr is SettingsLoaded,
+      listener: (context, state) {
+        if (state is SettingsLoaded) {
+          _checkReconciliation(state.settings.showReconciliationOnLaunch);
+        }
+      },
+      child: Builder(builder: (context) {
+        // Still waiting for settings load + async cheque check.
+        if (_needsReconciliation == null) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (_needsReconciliation == true) {
+          return ReconciliationScreen(
+            onComplete: () => setState(() => _needsReconciliation = false),
+          );
+        }
+        return const MainNavShell();
+      }),
+    );
   }
 }
