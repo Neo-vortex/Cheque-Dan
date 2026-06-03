@@ -11,8 +11,6 @@ import '../../features/search/presentation/screens/search_screen.dart';
 import '../../features/cheque_books/presentation/screens/cheque_books_screen.dart';
 import '../../features/cheques/presentation/blocs/cheque_bloc.dart';
 import '../../features/cheque_books/presentation/blocs/cheque_book_bloc.dart';
-import '../../features/ai_assistant/presentation/blocs/ai_assistant_bloc.dart';
-import '../../features/ai_assistant/presentation/screens/ai_assistant_screen.dart';
 import 'time_origin_widgets.dart';
 
 class MainNavShell extends StatefulWidget {
